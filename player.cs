@@ -3,7 +3,7 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents;
 using UnityEngine;
-
+                                    //ייבוא כל המחלקות הדרושות לפרוייקט
 using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
@@ -14,234 +14,76 @@ using Unity.MLAgents.Actuators;
 using System;
 using Unity.VisualScripting;
 
-public class Player : Agent
+public class Player : Agent //יצירת המחלקה שמייצגת את הסוכן במשחק.
 {
-    public Rigidbody2D rb;
-    public float jump_Height = 10f;
-    public float maxHeightReward = 10f;
-    public float currentHeightReward = 0.5f;
-    public SpriteRenderer sr;
-    public Camera camera;
+    public Rigidbody2D rb; //משמש להזזת השחקן– אחראי על התנועה של הכדור.
+    public float jump_Height = 10f; // גובה הקפיצה של השחקן בכל פעם שהוא קופץ.
+    public SpriteRenderer sr; //הרכיב שאחראי על הצגת הצבע של השחקן.
+    public Camera camera; //מצלמה שעוקבת אחרי השחקן, המיקום שלה מתאפס בסוף כל פרק והוא מאותחל להיות קצת מעל למיקום 
+    //ההתחלתי של השחקן
 
     public Color yellow_color;
     public Color blue_color;
-    public Color purple_color;
+    public Color purple_color;  //ארבעה צבעים אפשריים של השחקן והמכשולים.
     public Color pink_color;
 
-    public string current_color;
+    public string current_color; //שומר את הצבע הנוכחי של השחקן (לפי טאג)
     private float startYPosition;
-    //private float maxYPosition;
-    private Dictionary<GameObject, float> obstacleInitialAngles = new Dictionary<GameObject, float>();
-    public GameObject tester;
-
-   // public GameObject movemementColor;
-    private int stepCount = 0;
-    private float MaxHitDistance = 0;
-
-    public GameObject[] colorSwitchers;
-
+    private Dictionary<GameObject, float> obstacleInitialAngles = new Dictionary<GameObject, float>(); //מילון ששומר זוויות התחלתיות של מכשולים 
 
     public override void Initialize()
     {
         rb = GetComponent<Rigidbody2D>();
-        if (rb == null)
-        {
-            Debug.LogError("Rigidbody2D לא נמצא! ודא שהרכיב מחובר לאובייקט.");
-        }
     }
 
-
-    public override void OnEpisodeBegin()
+    public override void OnEpisodeBegin() //מופעלת בתחילת כל אפיזודה(משחק) – מאפסת את מיקום הכדור, מיקום המכשולים
+                                          //מבחינת זווית הסיבוב שלהם הם מתחילים כל משחק מאותה הזווית), מיקום המצלמה ומאתחלת צבע חדש לשחקן
     {
-        Debug.Log("max"+MaxHitDistance);
         transform.position = Vector3.zero;
-        rb.linearVelocity = Vector2.zero;
-        stepCount = 0;
+        //rb.linearVelocity = Vector2.zero;
         SetRandom_Color();
-        startYPosition = transform.position.y;
-        //maxYPosition = transform.position.y;
         obstacleInitialAngles.Clear();
-        camera.transform.position = new Vector3(0, 0, -10);
-        for (int i = 0; i < colorSwitchers.Length; i++)
-        {
-            colorSwitchers[i].SetActive(true);
-        }
-
+        camera.transform.position = new Vector3(0, 0, -10); 
     }
 
-    /* public override void CollectObservations(VectorSensor sensor)
-     {
-         sensor.AddObservation(transform.position.y);
-         sensor.AddObservation(rb.linearVelocity.y);
-         sensor.AddObservation(GetColorIndex());
-
-         string nearestObstacleType = GetNearestObstacleType();
-         float distanceToObstacle = GetDistanceToNearestObstacle(nearestObstacleType);
-         float obstacleRotation = GetObstacleRotationByType(nearestObstacleType);
-
-         sensor.AddObservation(distanceToObstacle);
-         sensor.AddObservation(GetObstacleTypeIndex(nearestObstacleType));
-         sensor.AddObservation(obstacleRotation);
-         string nearestObstacleType = GetNearestObstacleType();
-         float distanceToObstacle = GetDistanceToNearestObstacle(nearestObstacleType);
-         sensor.AddObservation(distanceToObstacle);
-         sensor.AddObservation(testercolor()); 
-
-         //Debug.Log($"Observations: Y={transform.position.y}, VelY={rb.linearVelocity.y}, Color={GetColorIndex()}, " +
-         //          $"Dist={distanceToObstacle}, ObstacleType={GetObstacleTypeIndex(nearestObstacleType)}, Rot={obstacleRotation}");
-     }*/
-
-    public override void CollectObservations(VectorSensor sensor)
-    {
+    public override void CollectObservations(VectorSensor sensor) //שולחת נתונים מנורמלים על צבעו הנוכחי של השחקן, הצבע שנמצא בכל רגע מול השחקן, 
+    {//המרחק של השחקן מהמכשול הקרוב, ומיקום השחקן על ציר הY. נתונים אלו נשלחו בתור הצבים/תצפיות של הסוכן לאימון ב mlagents.
         sensor.AddObservation(transform.position.y/155f);
-        
         sensor.AddObservation(testcolor());
-        //Debug.Log("Color Observation: " + GetColorFromArray(testcolor()));
-       
         sensor.AddObservation(RaycastHitDistance()/17f);
-        
-
-
         sensor.AddObservation(agentColor());
+    }  
 
-        //Debug.Log("Agent Color: " + GetColorFromArray(agentColor()));
-        //sensor.AddObservation(rb.linearVelocity.y);
-
-        //sensor.AddObservation(isPositive(rb.linearVelocity.y));
-    }
-
-
-
-
-
-
-    // עדכון: שימוש ב- float[] במקום ActionBuffers
-
-    private int isPositive(float x)
-    {
-        if(x > 0)
-        {
-            return 1;
-        }
-        if (x < 0)
-        {
-            return -1;
-        }
-        return 0;
-    }
-    public override void OnActionReceived(ActionBuffers actions)
-    {
+    public override void OnActionReceived(ActionBuffers actions) //מקבלת את הפעולה שהרשת החליטה לבצע – .
+    {//אם הפעולה היא קפיצה, מבוצעת קפיצה, וניתנים תגמולים בהתאם לגובה. אם לא התקבלה שום פולה ברירת המחדל של השחקן היא לעצור במקום.
         int action = actions.DiscreteActions[0];
-       
-        //AddReward(0.01f); // תגמול על לשרוד
-
-        //AddReward(stepCount * 0.5f);
-
-        // MoveChecker(action);
         if (action == 1)
         {
             Jump_Ball();
-            AddReward(1f);
+            AddReward(1f); //מתן תגמול חיובי על עלייה. מאחר והשחקן יכול רק לעלות או לעצור בכל פעם שהוא מבצע קפיצה הוא בעצם עולה 
+            //ועל כן מקבל תגמול חיובי.
         }
 
-        /*if(rb.linearVelocity.y < 0)
-        {
-            AddReward(isPositive(rb.linearVelocity.y)*5);
-        }*/
-        
-
-         //if (transform.position.y > maxYPosition)
-         //{
-         //   AddReward(10f);// (transform.position.y - maxYPosition) * maxHeightReward);
-         //    Debug.Log("GOOD REWARD");
-         //    maxYPosition = transform.position.y;
-         //}
-
-        //AddReward((transform.position.y - startYPosition) * currentHeightReward);
-
-        /*if (transform.position.y < -6)
-        {
-            AddReward(-100);
-        }
-        if (transform.position.y < -7)
-        {
-            AddReward(-100);
-        }
-        if (transform.position.y < -8)
-        {
-            AddReward(-100);
-        }
-      if (transform.position.y < -10f)
-        {
-            Debug.Log("[GAME OVER] הכדור יצא מהתחום.");
-            AddReward(-100f);
-            //Debug.Log("BAD REWARD");
-            EndEpisode();
-        }*/
-
+        if (transform.position.y == 154f)
+            AddReward(1000f); //"תגמול גבוה מאוד כשהשחקן מגיע לסוף של המשחק "מנצח:
         if (transform.position.y > 155f)
-        {
-            //Debug.Log("Win");
-            AddReward(1000f);
-            //Debug.Log("BAD REWARD");
             EndEpisode();
-
-        }
     }
 
-    /*  public override void OnActionReceived(ActionBuffers actions)
-      {
-          int action = actions.DiscreteActions[0];
-          if (action == 1)
-          {
-              Jump_Ball();
-              AddReward(-0.001f); // עונש קטן על קפיצה כדי למנוע ספאם
-          }
-
-          // תגמול על עלייה בגובה (תמריץ לסוכן להמשיך לעלות)
-          if (transform.position.y > maxYPosition)
-          {
-              AddReward((transform.position.y - maxYPosition) * 0.5f);
-              maxYPosition = transform.position.y;
-          }
-
-          // תגמול על הישרדות
-          AddReward(0.005f);
-
-          if (transform.position.y < -5f)
-          {
-              Debug.Log("[GAME OVER] הכדור יצא מהתחום.");
-              AddReward(-1.0f);
-              EndEpisode();
-          }
-
-          if (transform.position.y > 130f)
-          {
-              Debug.Log("Win");
-              AddReward(10.0f); // במקום 100,000 (ערך קיצוני)
-              EndEpisode();
-          }
-      }*/
-
-
-    // עדכון: שימוש ב- float[] במקום ActionBuffers
-    public override void Heuristic(in ActionBuffers actionsOut)
+    public override void Heuristic(in ActionBuffers actionsOut) //מאפשרת שליטה ידנית כדי לבדוק את המשחק
     {
-        //Debug.Log("hi");
         var discreteActionsOut = actionsOut.DiscreteActions;
         discreteActionsOut[0] = Input.GetKey(KeyCode.Space) ? 1 : 0;
-        //Debug.Log(Input.GetKey(KeyCode.Space) ? 1 : 0);
     }
 
-    void Jump_Ball()
+    void Jump_Ball() //פונקציה שמבצעת קפיצה לשחקן – מוסיפה לגובה שלו את jump_Height.
     {
         Vector3 pos = transform.position;
         pos.y += jump_Height;
         transform.position = pos;
-        //rb.linearVelocity = new Vector2(rb.linearVelocity.x, jump_Height);
     }
 
-    void SetRandom_Color()
+    void SetRandom_Color() //קובעת לשחקן צבע חדש באקראי מתוך ארבעת הצבעים האפשריים.
     {
         int index = UnityEngine.Random.Range(0, 4);
         if (index == 0)
@@ -264,46 +106,10 @@ public class Player : Agent
             sr.color = pink_color;
             current_color = "pink_color";
         }
-        //Debug.Log("[INFO] צבע חדש שנבחר: " + current_color);
     }
 
-    private int GetColorIndex()
-    {
-        if (current_color == "purple_color") return 0;
-        if (current_color == "yellow_color") return 1;
-        if (current_color == "blue_color") return 2;
-        if (current_color == "pink_color") return 3;
-        return -1;
-    }
-    
-
-    private void Update()
-    {
-        //Debug.Log(testercolor());
-    }
-    /*  private int testercolor()
-      {
-          RaycastHit2D[] ray = Physics2D.RaycastAll(transform.position, Vector2.up);
-          for (int i = 0; i < ray.Length; i++)
-          {
-              if (ray[i].collider.CompareTag("blue_color") || ray[i].collider.CompareTag("purple_color") || ray[i].collider.CompareTag("pink_color") || ray[i].collider.CompareTag("yellow_color"))
-              {
-                  if (ray[i].collider.CompareTag(current_color))
-                  {
-                      return 1;
-                  }
-                  else
-                  {
-                      return 0;
-                  }
-              }
-          }
-          return 0;
-      }*/
-
-
-    private float[] testcolor()
-    {
+    private float[] testcolor() //הפונקציה בודקת באמצעות RayCast שפוגעת באובייקט הקרוב ביותר מה הוא בצבע שנמצא בכל פריים מול הסוכן 
+    {//ומחזירה מערך של ארבעה תאים עם 0 ו 1 שכל תא מייצג את אחד מן הצבעים, מוסבר בהרחבה בתיק פרוייקט.
         Vector3 POS = transform.position;
         POS.y = transform.position.y + 1;
         //Debug.DrawRay(POS, Vector2.up*100f, Color.red);
@@ -335,15 +141,11 @@ public class Player : Agent
                 numbers[3] = 1f;
             }
             else numbers[3] = 0f;
-            //Debug.Log(hit.collider.tag);
         }
-        //Debug.Log("object  0:" + numbers[0] + " 1:" + numbers[1] + " 2:" + numbers[2] + " 3:" + numbers[3]);
-        //Debug.Log("-------------------------------");
         return numbers;
     }
     
-
-    private float RaycastHitDistance()
+    private float RaycastHitDistance() //מחזירה את המרחק בין השחקן למכשול הכי קרוב מעליו – בעזרת RayCast שמופעלת כלפי מעלה.
     {
 
         Vector3 POS = transform.position;
@@ -355,33 +157,18 @@ public class Player : Agent
 
         if (hit.collider != null)
         {
-            //Debug.Log("hit.distbance" + Mathf.Abs(transform.position.y - hit.transform.position.y));
-            // מחזיר את המרחק עד האובייקט שפגענו בו
-            if(MaxHitDistance< Mathf.Abs(transform.position.y - hit.transform.position.y))
-            {
-                MaxHitDistance = Mathf.Abs(transform.position.y - hit.transform.position.y);
-            }
-            
             return Mathf.Abs(transform.position.y - hit.transform.position.y);
-
-
-
-
         }
         else
         {
-            // אם לא פגע בכלום — מחזיר ערך שלילי (או ערך שתבחר)
             return -1f;
         }
     }
 
-
-
-    private float[] agentColor()
+    private float[] agentColor() //מחזירה מערך של ארבעה תאים עם 1 או 0 לפי הצבע הנוכחי של השחקן .
     {
         
         float[] numbers1 = { 0f, 0f, 0f, 0f };
-        //Debug.Log(current_color);
         
             if (current_color=="blue_color")
             {
@@ -399,164 +186,21 @@ public class Player : Agent
             {
                 numbers1[3] = 1f;
             }
-        //Debug.Log("agent  0:" + numbers1[0] + " 1:" + numbers1[1] + " 2:" + numbers1[2] + " 3:" + numbers1[3]);
-        //Debug.Log("-------------------------------");
+        
         return numbers1;
     }
  
-    private string GetColorFromArray(float[] array)
-    {
-     
-
-        if (array[0] == 1f)
-            return "blue_color";
-        else if (array[1] == 1f)
-            return "yellow_color";
-        else if (array[2] == 1f)
-            return "pink_color";
-        else if (array[3] == 1f)
-            return "purple_color";
-        else
-            return "לא ידוע";
-    }
-
-
-
-    /* private void OnTriggerEnter2D(Collider2D other)
-     {
-         if (other.CompareTag("Color_changer"))
-         {
-             SetRandom_Color();
-             Destroy(other.gameObject);
-             return;
-         }
-
-         if (!other.gameObject.CompareTag(current_color) && !other.CompareTag("Color_changer"))
-         {
-             Debug.Log("[GAME OVER] ");
-             AddReward(-30f);  // עונש על כישלון
-             EndEpisode();
-         }
-         else
-         {
-             Debug.Log("succses");
-             AddReward(100f);  // **תגמול גבוה להצלחת מעבר מכשול**
-         }
-     }*/
-
-    private void OnTriggerEnter2D(Collider2D other)
-    {
-        if (other.CompareTag("Color_changer"))
-        {
-            SetRandom_Color();
-            other.gameObject.SetActive(false);
-            return;
-        }
-
+    private void OnTriggerEnter2D(Collider2D other) //מתבצעת כשהשחקן פוגע באובייקט אחר –.
+    {// אם זה צבע נכון (תואם לצבע שלו) הוא מקבל תגמול, ואם לא – האמשחק נגמר והסוכן נענש
         if (!other.gameObject.CompareTag(current_color) && !other.CompareTag("Color_changer"))
         {
-            //Debug.Log("[GAME OVER] פגעת בצבע הלא נכון.");
-            AddReward(-15);
+            AddReward(-15); //תגמול שלילי על פגיעה במכשול בצבע שלא תואם את צבע השחקן
             EndEpisode();
         }
         else
         {
-            //Debug.Log("[SUCCESS] הכדור עבר במכשול הנכון!");
-            AddReward(40f);
-
-
+            AddReward(40f); //תגמול חיובי על מעבר בהצלחה מכשול (כניסה דרך צבע שתואם את צבע השחקן
         }
     }
-
-
-
-
-    /// <summary>
-    /// מחזירה את סוג המכשול הקרוב ביותר שנמצא **מעל השחקן**
-    /// </summary>
-    private string GetNearestObstacleType()
-    {
-        GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None); // מחליף את השיטה הישנה
-        GameObject nearest = null;
-        float minDistance = Mathf.Infinity;
-        string nearestObstacleType = "None";  // ברירת מחדל אם לא נמצא מכשול
-
-        foreach (GameObject obj in allObjects)
-        {
-            // נוודא שהאובייקט **אינו השחקן** ושיש לו Tag שהוא אחד מארבעת סוגי המכשולים
-            if (obj != this.gameObject && (obj.CompareTag("small") || obj.CompareTag("medium") || obj.CompareTag("plus") || obj.CompareTag("large")))
-            {
-                float distance = Vector2.Distance(transform.position, obj.transform.position);
-
-                // רק אם המכשול נמצא מעל השחקן
-                if (obj.transform.position.y > transform.position.y && distance < minDistance)
-                {
-                    minDistance = distance;
-                    nearest = obj;
-                    nearestObstacleType = obj.tag; // שומר את סוג המכשול לפי ה-Tag
-                }
-            }
-        }
-
-        return nearestObstacleType;
-    }
-
-    private float GetDistanceToNearestObstacle(string obstacleType)
-    {
-        GameObject[] allObstacles = GameObject.FindGameObjectsWithTag(obstacleType);
-        float minDistance = Mathf.Infinity;
-        float distanceToNearest = -1f; // ערך ברירת מחדל אם אין מכשול מתאים
-
-        foreach (GameObject obstacle in allObstacles)
-        {
-            float distance = obstacle.transform.position.y - transform.position.y;
-
-            // נבדוק רק מכשולים שנמצאים מעל השחקן
-            if (distance > 0 && distance < minDistance)
-            {
-                minDistance = distance;
-                distanceToNearest = distance;
-            }
-        }
-
-        return distanceToNearest; // אם לא נמצא מכשול מתאים, נחזיר -1
-    }
-
-
-    /// <summary>
-    /// ממיר את סוג המכשול למספר כדי להכניס לתוך מערכת ה-ML של Unity
-    /// </summary>
-    private int GetObstacleTypeIndex(string obstacleType)
-    {
-        if (obstacleType == "small") return 0;
-        if (obstacleType == "medium") return 1;
-        if (obstacleType == "plus") return 2;
-        if (obstacleType == "large") return 3;
-        return -1; // אם לא נמצא מכשול מתאים
-    }
-
-
-    private float GetObstacleRotationByType(string obstacleType)
-    {
-        GameObject[] obstacles = GameObject.FindGameObjectsWithTag(obstacleType);
-        if (obstacles.Length == 0)
-            return 0f; // אם אין מכשולים מהסוג הזה, נחזיר זווית 0
-
-        // נבחר מכשול אחד (ראשון מהרשימה) כדי לבדוק את הזווית שלו
-        return obstacles[0].transform.rotation.eulerAngles.z;
-    }
-
-    /*private void MoveChecker(int x)
-    {
-        if (x > 0f)
-        {
-            movemementColor.GetComponent<SpriteRenderer>().material.color = Color.green;
-        }
-        else
-        {
-            movemementColor.GetComponent<SpriteRenderer>().material.color = Color.red;
-        }
-    }*/
-
 }
 
